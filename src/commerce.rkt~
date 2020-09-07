@@ -1,0 +1,181 @@
+#lang racket
+(require racket/trace)
+(require "graph.rkt")
+(require "gps.rkt")
+;(require "main.rkt")
+(require "graph_construction.rkt")
+(require xml)
+(define data (xml->xexpr (document-element
+    (read-xml (open-input-file "../maps/map2.osm")))))
+
+#| ----- nearest ----- |#
+  ;; @brief   : given a graph and a list of city to visit return a path between the different cities following the algorithm of nearest cities
+  ;; @return  : list of cities
+(define (nearest graph cities)
+  (if (null? cities )
+      (print "No way")
+      (append (trip-nearest graph (car cities) cities) (list(car cities)))))
+
+#| ----- trip-nearest ----- |#
+  ;; @brief   : given a start point and cities compute recusively the nearest way 
+  ;; @return  : list of cities
+(define (trip-nearest graph start cities)
+  (letrec ([aux
+           (lambda (start cities visited)
+           (cond
+             [(null? visited) (aux start (cdr cities) (cons start visited))]
+             [(null? (cdr cities)) (reverse (cons start (cons (car cities) visited)))]
+             [else (let ([l (sort-Dijkstra graph start cities )]) (aux l (remv l cities) (cons l visited)))]
+             ))])
+    (aux start (cdr cities) '())))
+
+#| ----- sort-Dijkstra ----- |#
+  ;; @brief   : call Dijkstra function with a list of association and return the nearest city to start city 
+  ;; @return  : the id of the nearest city
+(define (sort-Dijkstra graph start list)
+  (let ([l (list-assoc graph)])
+  (mini graph start l list (Dijkstra graph start l))))
+
+
+
+;(define (pos-min l)
+ ; (letrec([aux
+  ;         (lambda (l min ind n)
+   ;          (cond
+    ;           [(null? l) ind]
+     ;          [(> min (cadar l)) (aux (cdr l) (cadar l) n (add1 n)) ]
+      ;         [else (aux (cdr l) min ind (add1 n))]))])
+    ;(aux l (cadar l) 1 1)))
+
+;(pos-min '(("225" 65) ("225" 34) ("225" 255) ("225" 45) ("225" 5) ("225" 4) ("225" 6) ("225" 1) ("225" 65)))
+
+#| ----- mini ----- |#
+  ;; @brief   : return the nearest city to the city start given the computed distance vector 
+  ;; @return  : the id of the nearest city
+(define (mini graph start l-assoc cities dist)
+  (letrec([aux
+           (lambda(min id l-assoc cities dist)
+             (cond
+               [(null? cities) id]
+               [(< min (car (vector-ref dist (get-index l-assoc (car cities))))) (aux min id l-assoc (cdr cities) dist)]
+               [else (aux (vector-ref dist (get-index l-assoc (car cities))) (car cities) l-assoc (cdr cities) dist)]))])
+    (aux (vector-ref dist (get-index l-assoc (car cities))) (car cities) l-assoc (cdr cities) dist)))
+
+;(min-first '(("225" 65) ("225" 34) ("225" 255) ("225" 45) ("225" 5) ("225" 4) ("225" 6) ("225" 1) ("225" 65)))
+
+#| ----- Dijkstra ----- |#
+  ;; @brief   : Dijkstra algorihtm
+  ;; @return  : list
+(define (Dijkstra graph id l)
+  (Dijkstra-rec graph id l))
+
+#| ----- Dijkstra-rec ----- |#
+  ;; @brief   : recursive algorithm used by Dijkstra
+  ;; @return  : list
+(define (Dijkstra-rec graph id l)
+  (letrec([aux
+           (lambda (p graph vect-dist vect-visited l)
+             (cond
+               [(null? p) vect-dist]
+               [else (aux (Dij-push p vect-visited l graph) graph (update-vect-dist (head p) graph (n-neighbour (get-graph graph (head p))) vect-dist l) (and(vector-set! vect-visited (get-index l (head p)) 1) vect-visited) l)]))])
+    (aux (list id) graph (initialize-vector (length (list-of-key graph)) id l) (make-vector (length (list-of-key graph)) 0) l)))
+
+#| ----- Dijkstra-push ----- |#
+  ;; @brief   : Push the given id in the satck if he is not already definetely evaluated
+  ;; @return  : stack
+(define (Dij-push p vect-visited l graph)
+  (if (equal? (vector-ref vect-visited (get-index l (head p))) 1)
+      (pop p)
+      (push-neighbour (head p) (pop p) graph)))
+
+#| ----- push-neighbour ----- |#
+  ;; @brief   : push the neighbour that have to be push in the stack
+  ;; @return  : stack
+(define (push-neighbour id p graph)
+  (letrec([aux
+           (lambda (p l id)
+             (cond
+               [(null? l) p]
+               [(>(distance-m (get-graph graph (car l)) (get-graph graph id)) (distance-m (get-graph graph (head p)) (get-graph graph id))) (aux (push (head p) (push (car l) (pop p))) (cdr l) id)]
+               [else (aux (push  (car l) p) (cdr l) id)]))])
+    (aux (push (car(n-neighbour(get-graph graph id))) p) (cdr(n-neighbour(get-graph graph id))) id)))  
+
+#| ----- modif-vect ----- |#
+  ;; @brief   : Change the value of the vector in the givan key 
+  ;; @return  : return the changed vector
+(define (modif-vect vect id)
+  (vector-set! vect id 1) vect)
+
+#| ----- push ----- |#
+  ;; @brief   : push the given x in a stack
+  ;; @return  : a stack
+(define (push x stack)
+  (if (list? x)
+      (append x stack)
+      (cons x stack)))
+
+#| ----- pop ----- |#
+  ;; @brief   : remove the first element of the stack
+  ;; @return  : a stack
+(define (pop stack)
+  (cdr stack))
+
+#| ----- head ----- |#
+  ;; @brief   : return the head of the stack
+  ;; @return  : a stack
+(define (head stack)
+  (car stack))
+
+#| ----- initialize-vector ----- |#
+  ;; @brief   : return a vector initialize with +inf everywhere except on the the positio id 
+  ;; @return  : vector
+(define (initialize-vector size id l)
+  (let ([v (make-vector size '(+inf.0))])
+    (vector-set! v (get-index l id) 0)
+    v))
+
+#| ----- list-assoc ----- |#
+  ;; @brief   : return the list of association of the given graph
+  ;; @return  : list
+(define (list-assoc graph)
+  (letrec([aux
+            (lambda (l1 l2 n)
+              (if (null? l1)
+                  l2
+                  (aux (cdr l1) (cons (list (car l1) n) l2) (add1 n))
+              ))])
+    (aux (list-of-key graph) '() 0 )))
+
+#| ----- get-index ----- |#
+  ;; @brief   : Given the list of association return the index in the vector of the id
+  ;; @return  : number
+(define (get-index l id)
+  (car(cdr(assoc id l))))
+
+#| ----- update-vect-dist ----- |#
+  ;; @brief   : update the distance of the neighbour of a node
+  ;; @return  : vector
+(define (update-vect-dist id graph neighbour vect-dist l)
+  (letrec([aux
+           (lambda (dist neighbour vect-dist graph id l)
+             (cond
+               [(null? neighbour) vect-dist]
+               [(< (+ dist (distance-m (get-graph graph (car neighbour)) (get-graph graph id)))
+                   (vector-ref vect-dist (get-index l (car neighbour))))
+                (aux dist
+                     (cdr neighbour)
+                     (and (vector-set! vect-dist (get-index l (car neighbour)) (+ dist
+                                                                     (distance-m (get-graph graph (car neighbour))
+                                                                                 (get-graph graph id))))vect-dist)
+                     graph id l) ]
+               [else (aux dist (cdr neighbour) vect-dist graph id l)]))])
+    (aux (vector-ref vect-dist (get-index l id)) neighbour vect-dist graph id l)))
+
+(define data-graph (osm-to-full-sorted data))
+(vector-ref (Dijkstra data-graph "3924371555" (list-assoc data-graph)) 331)
+;(push  '(1 2 3))
+
+(nearest data-graph '("3924371555" "345772925" "283653048" "3924371764" "345772340"))
+  
+
+
