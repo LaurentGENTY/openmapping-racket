@@ -1,0 +1,27 @@
+#lang racket
+
+(require "graph.rkt")
+(require "graph_construction.rkt")
+(require "parsing.rkt")
+(require xml)
+
+;; fichier test
+
+(define maps (xml->xexpr (document-element
+    (read-xml (open-input-file "../maps/map.osm")))))
+(car (cadddr maps))
+maps
+
+(define mappy (filter not-empty (map filt (cddr maps))))
+
+
+
+(define g (make-graph))
+
+mappy
+
+(set! g (fully-converted mappy g))
+(set! g (fully-added-neighbours mappy g))
+(n-neighbour (get-graph g "2549065258"))
+(set! g (sort-2 g))
+(n-neighbour (get-graph g "2549065258"))

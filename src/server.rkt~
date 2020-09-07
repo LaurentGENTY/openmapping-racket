@@ -1,0 +1,150 @@
+#lang racket
+
+#| ----- Requirement ----- |#
+(require "parsing.rkt")
+(require "graph.rkt")
+(require "graph_construction.rkt")
+(require "svg.rkt")
+
+(require xml)
+(require web-server/servlet
+         web-server/servlet-env)
+
+;; List of latitudes
+(define lats '())
+;; List of longitudes
+(define lons '())
+;; get the bounds for each latitude and longitude
+(define max-lat
+  "-90")
+(define max-lon
+  "-180")
+(define min-lat
+  "90")
+(define min-lon
+  "180")
+
+;; ---------------- Utils -----------------------------
+
+#| ----- get-bounds ----- |#
+  ;; @brief     : for all nodes in the graph, create lists for latitudes and longitudes and retrieve max and min for both latitude and longitude
+  ;; @return    : top level bounds retrieved
+(define (get-bounds)
+  (set! lats (get-lats (list-of-key g)))
+  (set! lons (get-lons (list-of-key g)))
+  (set! max-lat (apply max lats))
+  (set! min-lat (apply min lats))
+  (set! max-lon (apply max lons))
+  (set! min-lon (apply min lons)))
+
+#| ----- get-bounds-lat ----- |#
+  ;; @brief     : fill the list of latitude in order to get the maximum and minimum latitude
+  ;; @param  l  : list? of latitudes
+  ;; @return    : lats filled
+(define (get-lats l)
+  (cond
+    [(empty? l) l]
+    [else (cons (string->number(n-lat (get-graph g (car l)))) (get-lats (cdr l)))]))
+
+#| ----- get-bounds-lon ----- |#
+  ;; @brief     : fill the list of longitude in order to get the maximum and minimum longitude
+  ;; @param  l  : list? of longitudes
+  ;; @return    : lons filled
+(define (get-lons l)
+  (cond
+    [(empty? l) l]
+    [else (cons (string->number(n-lon (get-graph g (car l)))) (get-lons (cdr l)))]))
+
+;; Get the file from command line and create the graph (with OSM file)
+;; ------------------------------------
+
+;; Get command line argument : osm file
+(define src-file (vector-ref (current-command-line-arguments) 0))
+;; retrieve the xml (list) data from src
+(define maps (xml->xexpr (document-element
+                              (read-xml (open-input-file src-file)))))
+
+;; graph full of nodes (without degree 0)
+(define g (osm-to-full-sorted maps))
+
+;; retrieve real bounds
+(get-bounds)
+
+;; get the final svg container
+(define final-svg (graph-to-svg g max-lat min-lat max-lon min-lon))
+
+(length (list-of-key g))
+;; final-svg is the SVG we created
+;; ------------------------------------
+
+#| ---------------- PAGES / SERVER ---------------- |#
+
+#| ----- main-page ----- |#
+  ;; @brief      : main page
+  ;; @param req  : requests given in the url
+  ;; @return     : xexpr?
+(define (main-page req)
+  (response/xexpr
+   `(html (head (title "OPEN MAPPING SERVICE DISPLAY PAGE"))
+          (body
+           (h1 ((id "titre")) , "Open mapping display page")
+           ;; SVG filled with the data in the graph
+           ,final-svg
+           (pre ,(format "~a" (request-bindings req)))))))
+  
+;; Helper procedure to make returning HTTP responses easier.
+(define (http-response content)  ; The 'content' parameter should be a string.
+  (response/full
+    200                  ; HTTP response code.
+    #"OK"                ; HTTP response message.
+    (current-seconds)    ; Timestamp.
+    TEXT/HTML-MIME-TYPE  ; MIME type for content.
+    '()                  ; Additional HTTP headers.
+    (list                ; Content (in bytes) to send to the browser.
+      (string->bytes/utf-8 content))))
+
+(define (get-query->string req)
+   (format "~a" (request-bindings req)))
+
+
+;; ---------------- PAGES -----------------------------
+;; An example of a page returning HTML with xexprs and macros
+(define (display-page req)
+  (response/xexpr
+   `(html (head (title "OPEN MAPPING SERVICE DISPLAY PAGE"))
+             (body
+              (h1 , "display page")
+              (pre ,(format "~a" (request-bindings req)))))))
+
+;;recupere la liste des arg GET sous forme de liste
+;;(format "~a" (request-bindings req))
+
+(define (distance-page req)
+  (response/xexpr
+   `(html (head (title "DISTANCE"))
+             (body
+              (h1 , "Distance page")
+              (h1 , (get-query->string req))))))
+
+;; -------------------------------------------------
+;; Table of association between pages and functions
+
+;; Routing function
+;;     /display          --->   display-page
+;;     /route            --->   road-page
+;;     /distance         --->   distance-page
+;;     everything else   --->   main-page
+(define-values (server-dispatch server-url)
+    (dispatch-rules
+     [("display") display-page]
+     [("distance") distance-page]
+     [else main-page]))
+
+;; -------------------------------------------------
+
+;; Starting the server
+(serve/servlet server-dispatch
+               #:servlet-regexp #rx""
+               #:port 9000
+               #:launch-browser? #f)
+
