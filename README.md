@@ -1,78 +1,51 @@
-# oppen-mapping project : Helping you to find your way home
+# open-mapping
 
-This project implements several path-finding methods such as the A* algorithm, the Dijkstra algorithm, and the travelling-Salesman problem. In order to answer this differents algorithm a graph structure has been implemented.
+A small **routing engine in Racket** built on **OpenStreetMap** data: it parses `.osm` files into a graph, computes shortest paths (**Dijkstra**, **A\***) and short cycles (**travelling salesman**), and renders the result as **SVG** through a local web server.
 
-## Getting Started
+> School project, ENSEIRB-MATMECA (semester 6), by Emeric Duchemin, Laurent Genty, Julien Miens and Tanguy Pemeja. Project report: [`Projet_S6_Mapping.pdf`](Projet_S6_Mapping.pdf) (French).
 
-These instructions will get you a copy of the project up and running on your local machine for development and testing purposes. See deployment for notes on how to deploy the project on a live system.
+## Features
 
-### Prerequisites
+- **OSM parsing**: keeps only the routable ways from the raw map.
+- **Graph construction** with GPS distances between nodes.
+- **Shortest path** between two nodes (Dijkstra and A\*).
+- **Travelling salesman**: shortest cycle through a set of nodes (computed on small sets, 3 nodes).
+- **Web UI** served on `localhost:9000` that draws the map and the computed route as SVG.
 
-You need :
-* racket
-* internet browser
-* internet connection 
-* time 
+## Getting started
 
-### Installing
+Requirements: [Racket](https://racket-lang.org/).
 
-Just download the code from the Git repository
+```bash
+racket src/server.rkt maps/map2.osm
+```
 
-## Makefile 
-You can :
-* run the tests :
-** make test
-*clean the repository
-** make clean
-* clean the repository and then run the tests
-** make
+Then open:
 
-## Running test 
-To run the different tets you can 
-* To run the unitarian tests :
-  ** racket tests/all-test
-*To run the tests on big maps 
-  ** racket tests/test-paths
-You can also use the Makefile :
-make test  
+- `http://localhost:9000/route?start=<node-id>&end=<node-id>`: shortest path
+- `http://localhost:9000/cycle?nodes=<id>,<id>,<id>`: cycle through the given nodes
 
-## Running server 
-You can just write down these lines to launch the server from the root of the project repository : racket src/server maps/maps2.osm
-You can also easily change map2.osm by another existing map.  
-Notice that the cyles can only be computed with three nodes in the cycle, and only if a cycle exist.
+Any map in `maps/` works (ENSEIRB campus, New York, Macapá…).
 
-### Tree structure of the repository
-*/maps 
-      ** several maps are given
-*/src 
-      ** Dijkstra.rkt -> implements the Dijkstra algorithm and sevreal useful functions for the travelling-Salesman problem
-      ** gps.rkt -> implements the distance functions
-      ** graph.rkt -> implements the different function useful to maipulate graphs and implements the graph structure
-      ** parsing.rkt -> provide the functions which filters the list given by open street map to keep only the right ways
-      ** graph_construction.rkt -> provide the functions which construct based on a filtered list the graph 
-      ** route.rkt -> implements the functions which compute the way between two points
-      ** server.rkt -> file which contains the running server code 
-      ** svg.rkt -> Functions wich construct a svg (image displayed by the server)
-      ** travelling.rkt -> Relative file about the Travelling-Salesman problem
-*/tests
-      ** all-tests.rkt -> provide unitarian tests
-      ** test-graphs -> tests the different functions (routing) on a big graph
-*/rapport 
-*/README.md
-*/Makefile
+## Tests
 
-## Built With
+```bash
+make test
+```
 
-* drracket : IDE
+## Project structure
 
-## Authors
-
-Students of the ENSEIRB-Matmeca :
-* Emeric DUCHEMIN
-* Laurent GENTY
-* Julien MIENS
-* Tanguy PEMEJA
-
-## Acknowledgments
-
-* Special thanks to G. Chambres
+```
+src/
+  parsing.rkt             # filter OSM ways
+  graph_construction.rkt  # build the graph from the filtered data
+  graph.rkt               # graph structure and helpers
+  gps.rkt                 # distance functions
+  Dijkstra.rkt            # Dijkstra + helpers for the TSP
+  route.rkt               # path between two points
+  travelling.rkt          # travelling salesman
+  svg.rkt                 # SVG rendering
+  server.rkt              # web server
+maps/                     # sample .osm maps
+test/all-tests.rkt        # unit tests
+```
