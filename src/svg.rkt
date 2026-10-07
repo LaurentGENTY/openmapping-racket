@@ -42,38 +42,45 @@
 (define min-lon
   "180")
 
-;; Resize formulas :
-;;(coefWidthBox - [(x-lat - latMin) / (latMax - latMin) * (coefBoxWidth - offsetWidth)] ) + (- offsetWidth / 2)
+;; Projection : equirectangular, longitudes scaled by cos(latitude) so streets keep their real
+;; proportions, then fitted and centred in the box with a 5% margin
 
-;;(y-lon - lonMin) / (lonMax - lonMin) * coefBoxHeight
+;; Margin for the visualization
+(define margin (* (string->number height_box) 0.05))
 
-;; Offset for the visualization
-(define offset-width (* (string->number width_box) 0.05))
-(define offset-height (* (string->number height_box) 0.05))
+#| ----- scale ----- |#
+  ;; @brief     : pixels per degree of latitude, keeping the aspect ratio of the area
+  ;; @return    : number?
+(define (scale)
+  (let ([lat-span (max (- max-lat min-lat) 1e-9)]
+        [lon-span (max (* (- max-lon min-lon) (cos-mid-lat)) 1e-9)])
+    (min (/ (- (string->number width_box) (* 2 margin)) lon-span)
+         (/ (- (string->number height_box) (* 2 margin)) lat-span))))
+
+#| ----- cos-mid-lat ----- |#
+  ;; @brief     : cosine of the latitude in the middle of the bounds
+  ;; @return    : number?
+(define (cos-mid-lat)
+  (cos (degrees->radians (/ (+ max-lat min-lat) 2))))
+
 #| ----- lat-scaled ----- |#
-  ;; @brief     : resize latitude in bounds
+  ;; @brief     : y coordinate of a node in the box
   ;; @param n   : node?
   ;; @return    : string?
 (define (lat-scaled n)
-  (number->string (+ (- 0 (/ offset-width 2))
-                     (- (string->number height_box)
-                        (* (/ (- (string->number (n-lat n)) min-lat)
-                              (- max-lat min-lat))
-                           (- (string->number height_box)
-                              offset-width))))))
-  
+  (number->string (- (/ (string->number height_box) 2)
+                     (* (- (string->number (n-lat n)) (/ (+ max-lat min-lat) 2))
+                        (scale)))))
+
 #| ----- lon-scaled ----- |#
-  ;; @brief     : resize latitude in bounds
+  ;; @brief     : x coordinate of a node in the box
   ;; @param n   : node?
   ;; @return    : string?
 (define (lon-scaled n)
-  (number->string  (+ (- 0 (/ offset-height 2))
-                      (- (string->number width_box)
-                         (* (/ (- (- max-lon min-lon)
-                                  (- (string->number (n-lon n)) min-lon))
-                               (- max-lon min-lon))
-                            (- (string->number width_box)
-                               offset-height))))))
+  (number->string (+ (/ (string->number width_box) 2)
+                     (* (- (string->number (n-lon n)) (/ (+ max-lon min-lon) 2))
+                        (cos-mid-lat)
+                        (scale)))))
 
 
 #| ----- graph-to-svg ----- |#
@@ -204,12 +211,12 @@
                                (y1 ,(lat-scaled n))
                                (x2 ,(lon-scaled (get-graph g (car p))))
                                (y2 ,(lat-scaled (get-graph g (car p))))
-                               (style "stroke:rgb(100,41,38);stroke-width:2.5"))))]
+                               (style "stroke:rgb(215,38,61);stroke-width:4;stroke-linecap:round"))))]
     [else (append`((line ((x1 ,(lon-scaled n))
                           (y1 ,(lat-scaled n))
                           (x2 ,(lon-scaled (get-graph g (car p))))
                           (y2 ,(lat-scaled (get-graph g (car p))))
-                          (style "stroke:rgb(100,41,38);stroke-width:2.5"))))
+                          (style "stroke:rgb(215,38,61);stroke-width:4;stroke-linecap:round"))))
                  (lines-from-path-rec g (get-graph g (car p)) (cdr p)))]))
 
 
