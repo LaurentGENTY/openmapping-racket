@@ -130,11 +130,13 @@ async function caption(page, text) {
   }, text)
 }
 
-// Scroll smoothly so the 1280x720 SVG fills the viewport.
+// Scroll smoothly so the 1280x720 SVG sits at the top of the viewport, the caption below it.
 async function toMap(page) {
   await page.evaluate(async () => {
+    // The SVG ends the page: room below it lets the scroll bring it to the top.
+    document.body.style.paddingBottom = '120px'
     const svg = document.querySelector('svg')
-    const target = svg.getBoundingClientRect().top + window.scrollY - 45
+    const target = svg.getBoundingClientRect().top + window.scrollY
     const from = window.scrollY
     const steps = 45
     for (let i = 1; i <= steps; i++) {
