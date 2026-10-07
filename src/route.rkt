@@ -1,12 +1,13 @@
 #lang racket
 
-(provide find_path distance)
+(provide find_path distance path-length)
 
 #| ----- Route : calcule a route (path) between two nodes given by their id ----- |#
 
 #| ----- Requirement ----- |#
 (require "gps.rkt")
 (require "graph.rkt")
+(require "Dijkstra.rkt")
 ;;(require "main.rkt") ;; pour voir le "data-graph"
 
 
@@ -27,6 +28,8 @@
                         ((null? l) to_visit_list)
                         ;; If the current node wasnt already added (already_visited) and not in to_visit_list then add it
                         ((and (not (assoc (car l) to_visit_list))(not (member (car l) already_visited)))
+                         ;; Remember where the node was discovered from, so the rebuilt path only follows real edges
+                         (set! directions (cons (cons (car l) id) directions))
                          (cons (cons (car l) (distance-m (get-graph g (car l)) (get-graph g end))) (add-order (cdr l))))
                         (else (add-order (cdr l)))))))
     ;; Affect to_visit_list to the list full of n-neighbours
@@ -64,8 +67,6 @@
   ;; Retrieve the closest to_visit_list node (to_visit_list now doesnt have v anymore)
   (let ((v (closest-node)))
     (begin
-      ;; We add a direction (a node to the path)
-      (set! directions (cons (cons v id1) directions))
       (cond
         ;; If we find the end node (so if it's v)
         [(equal? v id2) #t]
@@ -119,19 +120,24 @@
 ;;(find_path data-graph "3924371770" "345772340") ;; -> '("345772340" "345772924" "345772925" "283653048" "3924371759" "3924371764" "3924371770")
 
 ;; =====================================================================================
-;; calculate the total distance between two point using a_star
+;; calculate the total distance between two points along the shortest path
+
+#| ----- path-length ----- |#
+  ;; @brief       : sum the distances between consecutive nodes of a path
+  ;; @param g     : graph?
+  ;; @param p     : listof string? ids of the path
+  ;; @return      : number? total length in meters
+(define (path-length g p)
+  (match p
+    ((cons r1 (cons r2 r3)) (+ (distance-m (get-graph g r1) (get-graph g r2)) (path-length g (cdr p))))
+    (else 0)))
 
 #| ----- distance ----- |#
-  ;; @brief       : compute the distance between 2 nodes in a graph using a_star
+  ;; @brief       : compute the distance between 2 nodes in a graph along the Dijkstra path,
+  ;;                the one drawn by the server (the greedy find_path can skip between non-adjacent nodes)
   ;; @param g     : graph?
   ;; @param start : string? id of the start node
   ;; @param end   : string? id of the end node
   ;; @return      : number? total distance in meters between 2 nodes
 (define (distance g start end)
-  (letrec ([road (find_path g start end)]
-           [auxiliary (lambda (l)
-                        (match l
-                          ((cons r1 (cons r2 r3)) (+ (distance-m (get-graph g r1) (get-graph g r2)) (auxiliary (cdr l))))
-                          (else 0)))])
-    (auxiliary road)))
-;;(distance data-graph "3924371555" "345772340") ;; -> 310.7 m
+  (path-length g (find-my-way g start end)))

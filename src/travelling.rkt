@@ -32,7 +32,9 @@
   ;; @brief   : Function that permit to avoid two computation of Dijkstra algorithm
   ;; @return  : list of cities
 (define (auxiliary-function-nearest graph start cities vect-visited visited start-rem aux)
-  (let* ([l (sort-Dijkstra graph start cities vect-visited)][u-vect (update-visited-call graph vect-visited (cons start l))])
+  ;; l goes from the reached city back to the neighbour of start: reverse it so that every node
+  ;; of the leg is marked except the reached city, the start of the next Dijkstra
+  (let* ([l (sort-Dijkstra graph start cities vect-visited)][u-vect (update-visited-call graph vect-visited (cons start (reverse l)))])
                (if (null? l)
                    '()
                    (aux (car l) (remv (car l) cities) (append l visited) start-rem u-vect)

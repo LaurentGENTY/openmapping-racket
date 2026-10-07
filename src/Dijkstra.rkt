@@ -132,8 +132,12 @@
   ;; @brief   : given a graph, a first element and a last element compute the way to go from start to end
   ;; @return  : list
 (define (find-my-way graph start end)
-  (let* ([l (list-assoc graph)])
-    (find-a-way end l (Dijkstra graph start l))))
+  (let* ([l (list-assoc graph)]
+         [vect-dist (Dijkstra graph start l)])
+    ;; end is in another connected component : no way
+    (if (equal? (car (vector-ref vect-dist (get-index l end))) +inf.0)
+        '()
+        (find-a-way end l vect-dist))))
 
 #| ----- find-a-way ----- |#
   ;; @brief   : Find a way thanks to a vect-dist vector

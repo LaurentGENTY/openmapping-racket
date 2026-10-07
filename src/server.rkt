@@ -137,19 +137,19 @@
 ;; Forms and buttons for pages
 
 (define button-node
-  (append `(form ((action "http://localhost:9000/node") (method "get")) (list `(button ((type "submit")) "Node page")))))
+  `(form ((action "http://localhost:9000/node") (method "get")) (button ((type "submit")) "Node page")))
 
 (define button-route
-  (append `(form ((action "http://localhost:9000/route") (method "get")) (list `(button ((type "submit")) "Route page")))))
+  `(form ((action "http://localhost:9000/route") (method "get")) (button ((type "submit")) "Route page")))
 
 (define button-distance
-  (append `(form ((action "http://localhost:9000/distance") (method "get")) (list `(button ((type "submit")) "Distance page")))))
+  `(form ((action "http://localhost:9000/distance") (method "get")) (button ((type "submit")) "Distance page")))
 
 (define button-main
-  (append `(form ((action "http://localhost:9000") (method "get")) (list `(button ((type "submit")) "Main page")))))
+  `(form ((action "http://localhost:9000") (method "get")) (button ((type "submit")) "Main page")))
 
 (define button-cycle
-  (append `(form ((action "http://localhost:9000/cycle?") (method "get")) (list `(button ((type "submit")) "Cycle page")))))
+  `(form ((action "http://localhost:9000/cycle?") (method "get")) (button ((type "submit")) "Cycle page")))
 
 (define form-node
     `(form ((action "/node") (method "get"))
@@ -411,8 +411,8 @@
          ;; wrong args : same nodes start and end
          [(string=? start end) (error-dist)]
          [else
-          (let ([path (find-my-way g start end)]
-                [d (distance g start end)])
+          (let* ([path (find-my-way g start end)]
+                 [d (path-length g path)])
             (cond
               ;; wrong args : same nodes start and end
               [(string=? start end) (error-args)]
