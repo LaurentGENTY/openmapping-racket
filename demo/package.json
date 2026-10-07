@@ -1,0 +1,11 @@
+{
+  "name": "openmapping-demo",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "record": "./record.sh"
+  },
+  "devDependencies": {
+    "playwright": "1.49.1"
+  }
+}
